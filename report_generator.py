@@ -233,3 +233,78 @@ def display_critical_path(
             print(f"  Task {pred} ({pred_name}) → Task {succ} ({succ_name})")
     else:
         print("No clear critical path found (parallel execution)")
+
+# ==========================================
+# 5. HELPER – DataFrame / List for exporter
+# ==========================================
+def report_to_df(tasks: List[Dict], solution: Dict) -> pd.DataFrame:
+    """DataFrame ringkas hasil optimasi (makespan dsb.)."""
+    makespan = solution["makespan"]
+    sequential = sum(t["duration"] for t in tasks)
+    time_saved = sequential - makespan
+    efficiency = (time_saved / sequential * 100) if sequential else 0
+    return pd.DataFrame(
+        {
+            "Metric": ["Optimal Makespan", "Sequential Time", "Time Saved", "Efficiency Gain"],
+            "Value": [
+                f"{makespan} units",
+                f"{sequential} units",
+                f"{time_saved} units",
+                f"{efficiency:.1f}%",
+            ],
+        }
+    )
+
+def resource_util_df(tasks: List[Dict], resources: List[Dict], solution: Dict) -> pd.DataFrame:
+    """DataFrame utilisasi puncak & rata-rata tiap resource."""
+    max_time = solution["makespan"]
+    util = {r["name"]: [0]*(max_time+1) for r in resources}
+    id2name = {r["id"]: r["name"] for r in resources}
+
+    # hitung pemakaian per slot waktu
+    for tid, sch in solution["task_schedule"].items():
+        task = next(t for t in tasks if t["id"] == tid)
+        for t_unit in range(sch["start"], sch["end"]):
+            for rid, qty in task["resource_req"].items():
+                util[id2name[rid]][t_unit] += qty
+
+    rows = []
+    for r in resources:
+        name, cap = r["name"], r["capacity"]
+        usage = util[name]
+        peak, avg = max(usage), sum(usage)/len(usage)
+        rows.append(
+            {
+                "Resource": name,
+                "Capacity": cap,
+                "Peak_Usage": peak,
+                "Avg_Usage": f"{avg:.1f}",
+                "Peak_Utilization": f"{peak/cap*100:.1f}%" if cap else "N/A",
+                "Avg_Utilization": f"{avg/cap*100:.1f}%" if cap else "N/A",
+            }
+        )
+    return pd.DataFrame(rows)
+
+def critical_path_list(dependencies: List[Tuple[int, int]], solution: Dict) -> list[str]:
+    """Daftar string hubungan pada critical path, urut dari awal→akhir."""
+    makespan = solution["makespan"]
+    current = [tid for tid, sch in solution["task_schedule"].items() if sch["end"] == makespan]
+    cp: list[Tuple[int, int]] = []
+
+    while current:
+        preds = []
+        for pred, succ in dependencies:
+            if succ in current:
+                sch_p, sch_s = solution["task_schedule"][pred], solution["task_schedule"][succ]
+                if sch_p["end"] == sch_s["start"]:
+                    preds.append(pred)
+                    cp.append((pred, succ))
+        current = preds
+
+    # ubah jadi list string (start→finish)
+    result = []
+    for pred, succ in reversed(cp):
+        nm_p = solution["task_schedule"][pred]["name"]
+        nm_s = solution["task_schedule"][succ]["name"]
+        result.append(f"Task {pred} ({nm_p}) → Task {succ} ({nm_s})")
+    return result
