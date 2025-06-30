@@ -5,11 +5,10 @@ Fungsi-fungsi visualisasi RCPSP - menerima dict `solution`
 """
 from __future__ import annotations
 from typing import Dict, Optional
-
+from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-
 
 # ----------------------------------------------------------------------
 def _solution_ok(solution: Optional[Dict]) -> bool:
@@ -148,3 +147,17 @@ def create_gantt_chart_fixed(solution: Dict) -> Optional[go.Figure]:
     )
     fig.update_yaxes(autorange="reversed")
     return fig
+
+# ----------------------------------------------------------------------
+def save_gantt_files(fig: go.Figure, base_name: str = "gantt"):
+    """
+    Simpan figur Gantt sebagai:
+    - <base_name>.html  (interaktif Plotly)
+    - <base_name>.png   (statis, butuh kaleido)
+    """
+    html_path = Path(f"{base_name}.html")
+    fig.write_html(html_path, include_plotlyjs="cdn", full_html=True)
+
+    png_path = Path(f"{base_name}.png")
+    fig.write_image(png_path, width=1200, height=600)  # pastikan kaleido ☑
+    return html_path, png_path
