@@ -61,6 +61,8 @@ def export_html_report(
         crit_list=critical_path_list(deps, sol),
         gantt_html=gantt_html_path.read_text(encoding="utf-8"),
         gantt_png  = gantt_png_b64,  
+        stats_df     = project_stats_df(tasks, resources, deps).to_html(index=False),
+        schedule_df  = schedule_df(tasks, resources, sol).to_html(index=False),
     )
     out = Path(out)
     out.write_text(rendered, encoding="utf-8")
@@ -86,6 +88,10 @@ def export_md_report(
     md += ["## Tasks", pd.DataFrame(tasks).to_markdown(index=False), ""]
     md += ["## Resources", pd.DataFrame(resources).to_markdown(index=False), ""]
     md += ["## Dependencies", pd.DataFrame(deps).to_markdown(index=False), ""]
+    md += ["## Project Statistics",
+       project_stats_df(tasks, resources, deps).to_markdown(index=False), ""]
+    md += ["## Detailed Schedule",
+        schedule_df(tasks, resources, sol).to_markdown(index=False), ""]
     md += ["## Solution Summary", report_to_df(tasks, sol).to_markdown(index=False), ""]
     md += [
         "## Resource Utilization",
@@ -111,3 +117,40 @@ def export_md_report(
     out = Path(out)
     out.write_text("\n".join(md), encoding="utf-8")
     return out
+
+# ---------- extra helpers ----------
+def project_stats_df(tasks, resources, deps):
+    return pd.DataFrame(
+        {
+            "Metric": [
+                "Total Tasks",
+                "Total Duration (if sequential)",
+                "Total Resources",
+                "Total Dependencies",
+            ],
+            "Value": [
+                len(tasks),
+                sum(t["duration"] for t in tasks),
+                len(resources),
+                len(deps),
+            ],
+        }
+    )
+
+def schedule_df(tasks, resources, sol):
+    id2res = {r["id"]: r["name"] for r in resources}
+    rows = []
+    for tid, sch in sorted(sol["task_schedule"].items()):
+        task = next(t for t in tasks if t["id"] == tid)
+        res_str = " | ".join(f"{id2res[r]}: {q}" for r, q in task["resource_req"].items())
+        rows.append(
+            dict(
+                Task_ID=tid,
+                Task_Name=sch["name"],
+                Start=sch["start"],
+                End=sch["end"],
+                Duration=sch["duration"],
+                Resource_Usage=res_str or "None",
+            )
+        )
+    return pd.DataFrame(rows)
