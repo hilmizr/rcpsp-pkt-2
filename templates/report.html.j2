@@ -24,6 +24,25 @@
 <ul>{% for c in crit_list %}<li>{{ c }}</li>{% endfor %}</ul>
 
 <h2>Interactive Gantt Chart</h2>
-{{ gantt_html | safe }}
+<!-- dibuka di browser -->
+<div class="no-print">
+  {{ gantt_html | safe }}
+</div>
+
+<!-- fallback statik untuk PDF / print -->
+<div class="print-only">
+  <img src="data:image/png;base64,{{ gantt_png }}" style="width:100%; height:auto;">
+</div>
 
 </body></html>
+
+<style>
+  @media screen {
+    .print-only { display: none; }
+  }
+  @media print {
+    .no-print   { display: none; }
+    .print-only { display: block; }
+  }
+</style>
+

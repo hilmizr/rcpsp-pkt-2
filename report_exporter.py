@@ -41,6 +41,7 @@ def export_html_report(
     deps: List[Tuple[int, int]],
     sol: Dict,
     gantt_html_path: Path,
+    gantt_png_b64: str,
     out: str | Path = "report.html",
 ) -> Path:
     """Generate an interactive HTML report in *out* (default `report.html`).
@@ -59,6 +60,7 @@ def export_html_report(
         util_df=resource_util_df(tasks, resources, sol).to_html(index=False),
         crit_list=critical_path_list(deps, sol),
         gantt_html=gantt_html_path.read_text(encoding="utf-8"),
+        gantt_png  = gantt_png_b64,  
     )
     out = Path(out)
     out.write_text(rendered, encoding="utf-8")
