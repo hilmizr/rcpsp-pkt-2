@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RCPSP Report</title>
+  <style>
+    body{font-family:Arial;margin:2rem;} table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #aaa;padding:4px;text-align:left;}
+    h2{border-bottom:2px solid #444;}
+  </style>
+</head>
+<body>
+<h1>RCPSP Project Report</h1>
+
+<h2>Input Data</h2>
+<h3>Tasks</h3>{{ tasks_df | safe }}
+<h3>Resources</h3>{{ resources_df | safe }}
+<h3>Dependencies</h3>{{ deps_df | safe }}
+
+<h2>Solution Summary</h2>{{ solution_df | safe }}
+
+<h2>Resource Utilization</h2>{{ util_df | safe }}
+
+<h2>Critical Path</h2>
+<ul>{% for c in crit_list %}<li>{{ c }}</li>{% endfor %}</ul>
+
+<h2>Interactive Gantt Chart</h2>
+{{ gantt_html | safe }}
+
+</body></html>
