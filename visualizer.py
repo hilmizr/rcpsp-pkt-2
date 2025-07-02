@@ -162,3 +162,41 @@ def save_gantt_files(fig: go.Figure, base_name: str = "gantt"):
         b64_png = base64.b64encode(f.read()).decode("ascii")
 
     return html_path, png_path, b64_png
+
+# ----------------------------------------------------------------------
+def create_gantt_chart_before(tasks: list[dict]) -> go.Figure:
+    """
+    Buat Gantt chart BEFORE scheduling (mis. urutan sequential / topological).
+    Asumsinya: tugas dijadwalkan berurutan berdasarkan ID.
+    """
+    base_date = pd.Timestamp("2024-01-01")
+    current_time = 0
+    gantt_rows = []
+
+    tasks_sorted = sorted(tasks, key=lambda t: t["id"])
+
+    for task in tasks_sorted:
+        start = current_time
+        end = start + task["duration"]
+        gantt_rows.append({
+            "Task": f"Task {task['id']}: {task['name']}",
+            "Start": base_date + pd.Timedelta(days=start),
+            "Finish": base_date + pd.Timedelta(days=end),
+            "Resource": f"Duration: {task['duration']}",
+        })
+        current_time = end  # purely sequential, no parallelism
+
+    df = pd.DataFrame(gantt_rows)
+    fig = px.timeline(
+        df,
+        x_start="Start",
+        x_end="Finish",
+        y="Task",
+        color="Resource",
+        title="Initial Task Sequence (Before Scheduling)",
+    )
+    fig.update_layout(xaxis_title="Time Units", yaxis_title="Tasks", height=600)
+    fig.update_xaxes(tickformat="%d", tickmode="linear",
+                     tick0=base_date, dtick=86_400_000)  # 1 day in ms
+    fig.update_yaxes(autorange="reversed")
+    return fig

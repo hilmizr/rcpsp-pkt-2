@@ -1,11 +1,13 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>RCPSP Report</title>
   <style>
-    body{font-family:Arial;margin:2rem;} table{border-collapse:collapse;width:100%;}
+    body{font-family:Arial,Helvetica,sans-serif;margin:2rem;}
+    table{border-collapse:collapse;width:100%;}
     th,td{border:1px solid #aaa;padding:4px;text-align:left;}
-    h2{border-bottom:2px solid #444;}
+    h2{border-bottom:2px solid #444;margin-top:2rem;}
   </style>
 </head>
 <body>
@@ -26,18 +28,26 @@
 <h2>Critical Path</h2>
 <ul>{% for c in crit_list %}<li>{{ c }}</li>{% endfor %}</ul>
 
-<h2>Interactive Gantt Chart</h2>
-<!-- dibuka di browser -->
+<h2>Initial Gantt Chart (Before Scheduling)</h2>
+<!-- interactive (on screen) -->
 <div class="no-print">
-  {{ gantt_html | safe }}
+  {{ gantt_html_before | safe }}
 </div>
-
-<!-- fallback statik untuk PDF / print -->
+<!-- fallback static for PDF/print -->
 <div class="print-only">
-  <img src="data:image/png;base64,{{ gantt_png }}" style="width:100%; height:auto;">
+  <img src="data:image/png;base64,{{ gantt_png_before }}" style="width:100%; height:auto;">
 </div>
 
-</body></html>
+<h2>Final Gantt Chart (After Scheduling)</h2>
+<div class="no-print">
+  {{ gantt_html_after | safe }}
+</div>
+<div class="print-only">
+  <img src="data:image/png;base64,{{ gantt_png_after }}" style="width:100%; height:auto;">
+</div>
+
+</body>
+</html>
 
 <style>
   @media screen {
@@ -48,4 +58,3 @@
     .print-only { display: block; }
   }
 </style>
-

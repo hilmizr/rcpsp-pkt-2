@@ -1,4 +1,3 @@
-from __future__ import annotations
 """report_exporter.py
 ======================
 Render project‑wide RCPSP reports into **HTML** (interactive), **Markdown**, and
@@ -10,9 +9,10 @@ html_path, png_path = viz.save_gantt_files(fig, "gantt")
 html_rpt = export_html_report(tasks, resources, deps, sol, html_path)
 md_rpt   = export_md_report(tasks, resources, deps, sol, png_path)
 """
+
+from __future__ import annotations
 from pathlib import Path
 from typing import List, Dict, Tuple
-
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
@@ -27,98 +27,95 @@ __all__ = [
     "export_md_report",
 ]
 
-# ---------------------------------------------------------------------------
-# Jinja2 env (looks for templates/ in project root)
-# ---------------------------------------------------------------------------
 _ENV = Environment(loader=FileSystemLoader("templates"), autoescape=True)
 
-# ---------------------------------------------------------------------------
-# 1. HTML report with embedded interactive Plotly
 # ---------------------------------------------------------------------------
 def export_html_report(
     tasks: List[Dict],
     resources: List[Dict],
     deps: List[Tuple[int, int]],
     sol: Dict,
-    gantt_html_path: Path,
-    gantt_png_b64: str,
+    gantt_html_path_after: Path,
+    gantt_png_b64_after: str,
+    gantt_html_path_before: Path,
+    gantt_png_b64_before: str,
     out: str | Path = "report.html",
 ) -> Path:
-    """Generate an interactive HTML report in *out* (default `report.html`).
-
-    * `gantt_html_path` is the *full* HTML produced by `fig.write_html()` and
-      will be in‑lined into the body of the report to keep everything
-      self‑contained.
-    """
-
+    """Generate an interactive HTML report in *out* (default `report.html`)."""
     tmpl = _ENV.get_template("report.html.j2")
     rendered = tmpl.render(
         tasks_df=pd.DataFrame(tasks).to_html(index=False),
         resources_df=pd.DataFrame(resources).to_html(index=False),
         deps_df=pd.DataFrame(deps).to_html(index=False),
-        solution_df=report_to_df(tasks, sol).to_html(index=False),  # <-- fixed
+        solution_df=report_to_df(tasks, sol).to_html(index=False),
         util_df=resource_util_df(tasks, resources, sol).to_html(index=False),
         crit_list=critical_path_list(deps, sol),
-        gantt_html=gantt_html_path.read_text(encoding="utf-8"),
-        gantt_png  = gantt_png_b64,  
-        stats_df     = project_stats_df(tasks, resources, deps).to_html(index=False),
-        schedule_df  = schedule_df(tasks, resources, sol).to_html(index=False),
+        gantt_html_before=gantt_html_path_before.read_text(encoding="utf-8"),
+        gantt_png_before=gantt_png_b64_before,
+        gantt_html_after=gantt_html_path_after.read_text(encoding="utf-8"),
+        gantt_png_after=gantt_png_b64_after,
+        stats_df=project_stats_df(tasks, resources, deps).to_html(index=False),
+        schedule_df=schedule_df(tasks, resources, sol).to_html(index=False),
     )
     out = Path(out)
     out.write_text(rendered, encoding="utf-8")
     return out
 
 # ---------------------------------------------------------------------------
-# 2. Markdown report (lightweight, viewable in Git/Notion/VSCode)
-# ---------------------------------------------------------------------------
 def export_md_report(
     tasks: List[Dict],
     resources: List[Dict],
     deps: List[Tuple[int, int]],
     sol: Dict,
-    gantt_png_path: Path | None,
+    gantt_png_path_after: Path | None,
+    gantt_png_path_before: Path | None = None,
     out: str | Path = "report.md",
 ) -> Path:
-    """Render a Markdown snapshot.  If `gantt_png_path` is *None* (PNG export
-    failed), the Gantt section will fall back to a textual link only.
-    """
+    """Render a Markdown snapshot, with optional Gantt (before/after)."""
     md: list[str] = []
     md += ["# RCPSP Project Report", ""]
-    # Tables
     md += ["## Tasks", pd.DataFrame(tasks).to_markdown(index=False), ""]
     md += ["## Resources", pd.DataFrame(resources).to_markdown(index=False), ""]
     md += ["## Dependencies", pd.DataFrame(deps).to_markdown(index=False), ""]
-    md += ["## Project Statistics",
-       project_stats_df(tasks, resources, deps).to_markdown(index=False), ""]
-    md += ["## Detailed Schedule",
-        schedule_df(tasks, resources, sol).to_markdown(index=False), ""]
+    md += ["## Project Statistics", project_stats_df(tasks, resources, deps).to_markdown(index=False), ""]
+    md += ["## Detailed Schedule", schedule_df(tasks, resources, sol).to_markdown(index=False), ""]
     md += ["## Solution Summary", report_to_df(tasks, sol).to_markdown(index=False), ""]
-    md += [
-        "## Resource Utilization",
-        resource_util_df(tasks, resources, sol).to_markdown(index=False),
-        "",
-    ]
-    # Critical path bullets
+    md += ["## Resource Utilization", resource_util_df(tasks, resources, sol).to_markdown(index=False), ""]
+    
+    # Critical path
     md += ["## Critical Path"]
     md += [f"- {line}" for line in critical_path_list(deps, sol)]
     md += [""]
-    # Gantt section
-    md += ["## Gantt Chart"]
-    if gantt_png_path and gantt_png_path.exists():
+
+    # Gantt BEFORE
+    md += ["## Initial Gantt Chart (Before Scheduling)"]
+    if gantt_png_path_before and gantt_png_path_before.exists():
         md += [
-            f"[Interactive version]({gantt_png_path.with_suffix('.html').name})",
+            f"[Interactive version]({gantt_png_path_before.with_suffix('.html').name})",
             "",
-            f"![Gantt chart]({gantt_png_path.name})",
+            f"![Before Gantt Chart]({gantt_png_path_before.name})",
             "",
         ]
     else:
-        md += ["Interactive Gantt available in HTML report.", ""]
+        md += ["(Gantt before scheduling not available)", ""]
+
+    # Gantt AFTER
+    md += ["## Final Gantt Chart (After Scheduling)"]
+    if gantt_png_path_after and gantt_png_path_after.exists():
+        md += [
+            f"[Interactive version]({gantt_png_path_after.with_suffix('.html').name})",
+            "",
+            f"![After Gantt Chart]({gantt_png_path_after.name})",
+            "",
+        ]
+    else:
+        md += ["(Gantt after scheduling not available)", ""]
 
     out = Path(out)
     out.write_text("\n".join(md), encoding="utf-8")
     return out
 
-# ---------- extra helpers ----------
+# ---------------------------------------------------------------------------
 def project_stats_df(tasks, resources, deps):
     return pd.DataFrame(
         {
@@ -154,3 +151,4 @@ def schedule_df(tasks, resources, sol):
             )
         )
     return pd.DataFrame(rows)
+
